@@ -79,18 +79,73 @@ function RenderGalleryPage() {
         .then(response => response.text())
         .then(html => {
             document.querySelector('main').innerHTML = html;
-            gallery = '';
-            images.forEach(elem => {
-                gallery+= `<div class="gallery-item">
-                                <img src="images/${elem.file}" alt="${elem.description}>
-                                <p class="gallery-description">${elem.description}</p>
-                            </div>`
+
+            const galleryContainer = document.getElementById('gallery');
+            const observer = new IntersectionObserver(onIntersection, { rootMargin: '100px' });
+
+            images.forEach((imgData, index) => {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+
+                const img = document.createElement('img');
+                img.dataset.src = `images/${imgData.file}`; // Lazy load path
+                img.alt = imgData.description;
+                img.title = imgData.title;
+
+                item.appendChild(img);
+                galleryContainer.appendChild(item);
+                observer.observe(img);
             });
-            document.getElementById('gallery').innerHTML = gallery;
-            
+
+            setupModal();
         })
         .catch(error => console.error('Error loading gallery page:', error));
 }
+
+// Lazy loading handler
+function onIntersection(entries, observer) {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            const src = img.dataset.src;
+
+            fetch(src)
+                .then(response => response.blob())
+                .then(blob => {
+                    img.src = URL.createObjectURL(blob);
+                });
+
+            observer.unobserve(img);
+        }
+    });
+}
+
+// Modal setup
+function setupModal() {
+    const modal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('modal-img');
+    const closeBtn = document.getElementById('modal-close');
+
+    document.getElementById('gallery').addEventListener('click', (e) => {
+        if (e.target.tagName === 'IMG') {
+            modalImg.src = e.target.src;
+            modal.classList.remove('hidden');
+        }
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modalImg.src = '';
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            modalImg.src = '';
+        }
+    });
+}
+
 
 document.querySelector('#gallery-link').addEventListener('click', (event) => {
     let stateObj = { page: 'gallery' };
@@ -109,8 +164,8 @@ function RenderHomePage() {
 }
 function popStateHandler() {
     let loc = window.location.href.toString().split(window.location.host)[1];
-    if (loc === pageUrls.contact){ RenderContactPage(); }
-    else if(loc === pageUrls.about){ RenderAboutPage(); }
+    if (loc === pageUrls.contact){ RenderContactPage();}
+    else if(loc === pageUrls.about){ RenderAboutPage();}
     else if (loc === pageUrls.home){ RenderHomePage();}
     else if (loc === pageUrls.gallery){ RenderGalleryPage();}
 }
